@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { seedIfEmpty } from "./seed";
@@ -7,13 +8,48 @@ const globalForDb = globalThis as unknown as {
   __prixNoumeaDb?: DatabaseSync;
 };
 
-function resolveDbPath(): string {
+const DB_FILENAME = "app.db";
+
+/**
+ * Les plateformes serverless (Vercel, Lambda…) exposent un système de fichiers
+ * en lecture seule : seul `os.tmpdir()` est accessible en écriture.
+ */
+function isServerlessRuntime(): boolean {
+  return Boolean(
+    process.env.VERCEL ||
+    process.env.VERCEL_ENV ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.LAMBDA_TASK_ROOT ||
+    process.env.NETLIFY,
+  );
+}
+
+function toAbsolute(target: string): string {
+  return path.isAbsolute(target) ? target : path.join(process.cwd(), target);
+}
+
+/**
+ * Liste ordonnée des emplacements candidats pour le fichier SQLite.
+ * Le premier chemin ouvrable en écriture est retenu.
+ */
+function candidateDbPaths(): string[] {
   const configured = process.env.DATABASE_PATH?.trim();
-  if (!configured) return path.join(process.cwd(), "data", "app.db");
-  if (configured === ":memory:") return configured;
-  return path.isAbsolute(configured)
-    ? configured
-    : path.join(/*turbopackIgnore: true*/ process.cwd(), configured);
+  if (configured === ":memory:") return [":memory:"];
+
+  const ordered: string[] = [];
+
+  if (configured) {
+    ordered.push(toAbsolute(configured));
+  }
+
+  if (isServerlessRuntime()) {
+    ordered.push(path.join(os.tmpdir(), DB_FILENAME));
+  }
+
+  ordered.push(path.join(process.cwd(), "data", DB_FILENAME));
+  ordered.push(path.join(os.tmpdir(), "prix-noumea", DB_FILENAME));
+
+  return Array.from(new Set(ordered));
 }
 
 function initializeSchema(db: DatabaseSync): void {
@@ -85,10 +121,7 @@ function ensureColumn(
   }
 }
 
-export function getDb(): DatabaseSync {
-  if (globalForDb.__prixNoumeaDb) return globalForDb.__prixNoumeaDb;
-
-  const dbPath = resolveDbPath();
+function openDatabase(dbPath: string): DatabaseSync {
   if (dbPath !== ":memory:") {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   }
@@ -97,7 +130,41 @@ export function getDb(): DatabaseSync {
   db.exec("PRAGMA foreign_keys = ON;");
   initializeSchema(db);
   seedIfEmpty(db);
-
-  globalForDb.__prixNoumeaDb = db;
   return db;
+}
+
+export function getDb(): DatabaseSync {
+  const cached = globalForDb.__prixNoumeaDb;
+  if (cached) return cached;
+
+  const failures: string[] = [];
+
+  for (const candidate of candidateDbPaths()) {
+    try {
+      const db = openDatabase(candidate);
+      if (candidate !== ":memory:") {
+        console.info(`[db] SQLite ouvert: ${candidate}`);
+      }
+      globalForDb.__prixNoumeaDb = db;
+      return db;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${candidate} (${message})`);
+    }
+  }
+
+  // Dernier recours : base en mémoire, réinitialisée à chaque instance.
+  try {
+    const db = openDatabase(":memory:");
+    console.warn("[db] Repli sur une base en mémoire (aucune persistance).");
+    globalForDb.__prixNoumeaDb = db;
+    return db;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failures.push(`:memory: (${message})`);
+  }
+
+  throw new Error(
+    `Impossible d'ouvrir la base SQLite. Emplacements essayés : ${failures.join(" | ")}`,
+  );
 }
