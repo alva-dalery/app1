@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
     title: "Magasins",
-    description: "Sélectionnez un ou deux supermarchés de Nouméa à comparer.",
+    description: "Comparez tous les supermarchés de Nouméa, puis filtrez ceux qui vous intéressent.",
 };
 
 export default async function StoresPage() {
@@ -26,9 +26,9 @@ export default async function StoresPage() {
                 <p className="eyebrow">Votre panier</p>
                 <h1 className="section-title mt-2">Choisissez vos magasins.</h1>
                 <p className="mt-3 text-sm leading-relaxed text-ink/60 sm:text-base">
-                    Sélectionnez un magasin pour calculer le panier complet, ou deux magasins pour comparer et
-                    répartir vos achats au meilleur prix. Les commerces spécialisés sont inclus lorsqu'ils
-                    proposent des produits alimentaires.
+                    Sans sélection, tous les magasins sont comparés. Cochez-en autant que vous voulez pour filtrer
+                    votre panier et répartir vos achats au meilleur prix. Les commerces spécialisés sont inclus
+                    lorsqu'ils proposent des produits alimentaires.
                 </p>
             </div>
 

@@ -110,9 +110,16 @@ export function ProductSearch() {
     const rows = useMemo(() => {
         const selectedIds = new Set(selectedStores.map((store) => store.id));
 
-        // Les magasins sélectionnés restent affichés en tête, même sans relevé,
-        // puis on ajoute les autres magasins de Nouméa qui vendent le produit :
-        // sans cela un produit vendu ailleurs apparaissait sans aucun prix.
+        // Sans filtre : tous les magasins de Nouméa qui référencent le produit.
+        if (selectedStores.length === 0) {
+            return sortedOffers.map((offer) => ({
+                storeId: offer.storeId,
+                label: offer.storeLabel,
+                offer,
+                isSelectedStore: false,
+            }));
+        }
+
         const selectedRows = selectedStores.map((store) => ({
             storeId: store.id,
             label: store.label,
@@ -120,9 +127,12 @@ export function ProductSearch() {
             isSelectedStore: true,
         }));
 
+        // Si aucun magasin filtré ne vend le produit, on complète avec les autres
+        // magasins : le panneau ne doit jamais paraître vide.
+        if (selectedRows.some((row) => row.offer)) return selectedRows;
+
         const otherRows = sortedOffers
             .filter((offer) => !selectedIds.has(offer.storeId))
-            .slice(0, 10)
             .map((offer) => ({
                 storeId: offer.storeId,
                 label: offer.storeLabel,
@@ -133,7 +143,12 @@ export function ProductSearch() {
         return [...selectedRows, ...otherRows];
     }, [selectedStores, offers, sortedOffers]);
 
-    const hasOtherStoreRows = rows.some((row) => !row.isSelectedStore);
+    const filterHasNoOffer = useMemo(
+        () =>
+            selectedStores.length > 0 &&
+            !selectedStores.some((store) => offers.some((offer) => offer.storeId === store.id)),
+        [selectedStores, offers],
+    );
 
     return (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
@@ -238,9 +253,9 @@ export function ProductSearch() {
                 </div>
             </section>
 
-            <section className="xl:sticky xl:top-24 xl:self-start">
-                <div className="card-strong overflow-hidden">
-                    <div className="border-b border-ink/8 p-5">
+            <section className="xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:self-start">
+                <div className="card-strong flex flex-col overflow-hidden xl:max-h-[calc(100vh-7rem)]">
+                    <div className="shrink-0 border-b border-ink/8 p-5">
                         <p className="eyebrow">Comparaison de prix</p>
                         {selectedProduct ? (
                             <>
@@ -262,7 +277,7 @@ export function ProductSearch() {
                     </div>
 
                     {selectedProduct ? (
-                        <div className="p-5">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
                             {hydrated && selectedStores.length > 0 ? (
                                 <div className="mb-4 flex flex-wrap gap-1.5">
                                     {selectedStores.map((store) => (
@@ -273,7 +288,7 @@ export function ProductSearch() {
                                 </div>
                             ) : (
                                 <p className="mb-4 rounded-2xl bg-sand px-3 py-2 text-xs text-ink/60">
-                                    Astuce : sélectionnez un ou deux magasins pour ne comparer que votre panier.
+                                    Aucun filtre actif : tous les magasins de Nouméa sont comparés.
                                 </p>
                             )}
 
@@ -315,8 +330,8 @@ export function ProductSearch() {
                             ) : null}
 
                             {!offersLoading && !offersError && offers.length > 0 ? (
-                                <div className="scroll-x -mx-2">
-                                    <table className="data-table">
+                                <div className="scroll-x -mx-2 xl:overflow-visible">
+                                    <table className="data-table data-table-sticky">
                                         <thead>
                                             <tr>
                                                 <th>Magasin</th>
@@ -375,10 +390,11 @@ export function ProductSearch() {
                                 </div>
                             ) : null}
 
-                            {!offersLoading && !offersError && hasOtherStoreRows ? (
-                                <p className="mt-3 rounded-2xl bg-sand px-3 py-2 text-xs leading-relaxed text-ink/60">
-                                    D'autres magasins de Nouméa vendent ce produit : ils sont affichés à titre de
-                                    comparaison, car il n'est pas référencé dans tous les magasins sélectionnés.
+                            {!offersLoading && !offersError && filterHasNoOffer ? (
+                                <p className="mt-3 rounded-2xl border border-coral/20 bg-coral/10 px-3 py-2 text-xs leading-relaxed text-ink/70">
+                                    Aucun de vos magasins filtrés ne référence ce produit : les magasins qui le vendent
+                                    sont ajoutés ci-dessous pour que le prix reste visible. Retirez le filtre pour
+                                    comparer tous les magasins de Nouméa.
                                 </p>
                             ) : null}
 

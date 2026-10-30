@@ -16,9 +16,9 @@ const STEPS = [
     },
     {
         number: "02",
-        title: "Sélectionnez 1 ou 2 magasins",
+        title: "Choisissez vos magasins",
         description:
-            "Comparez le panier complet dans un magasin, ou répartissez les achats entre deux enseignes.",
+            "Tous les magasins sont comparés par défaut. Filtrez-en un, deux ou plus, ou répartissez les achats entre plusieurs enseignes.",
     },
     {
         number: "03",
@@ -58,8 +58,7 @@ export default async function HomePage() {
 
                     <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/65 sm:text-lg">
                         Comparez les supermarchés de Nouméa, calculez le coût réel de vos recettes et découvrez
-                        où chaque ingrédient vous coûte le moins cher. Un ou deux magasins, zéro mauvaise
-                        surprise.
+                        où chaque ingrédient vous coûte le moins cher. Tous les magasins, zéro mauvaise surprise.
                     </p>
 
                     <div className="mt-7 flex flex-wrap gap-3">

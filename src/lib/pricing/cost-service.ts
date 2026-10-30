@@ -76,9 +76,6 @@ async function resolveStores(storeIds: string[]): Promise<Store[]> {
     if (requested.length === 0) {
         throw new CostServiceError("Sélectionnez au moins un magasin.");
     }
-    if (requested.length > 2) {
-        throw new CostServiceError("Sélectionnez un ou deux magasins maximum.");
-    }
 
     const allStores = await getNoumeaStores();
     const byId = new Map(allStores.map((store) => [store.id, store]));

@@ -334,6 +334,14 @@ textarea {
     white-space: nowrap;
 }
 
+/* En-tête figé quand le tableau défile dans le panneau de comparaison. */
+.data-table-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fdfc;
+}
+
 .data-table td {
     padding: 0.75rem 0.7rem;
     border-bottom: 1px solid rgba(16, 42, 43, 0.06);

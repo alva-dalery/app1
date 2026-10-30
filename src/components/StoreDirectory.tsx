@@ -97,8 +97,8 @@ export function StoreDirectory({ stores }: { stores: Store[] }) {
                                         </span>
                                         <span
                                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[0.65rem] font-black ${selected
-                                                    ? "border-lagoon bg-lagoon text-white"
-                                                    : "border-ink/15 bg-white text-ink/25"
+                                                ? "border-lagoon bg-lagoon text-white"
+                                                : "border-ink/15 bg-white text-ink/25"
                                                 }`}
                                         >
                                             {selected ? "✓" : "+"}
@@ -121,10 +121,11 @@ export function StoreDirectory({ stores }: { stores: Store[] }) {
                 <div className="card-strong p-5">
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <p className="eyebrow">Panier de comparaison</p>
+                            <p className="eyebrow">Filtre de comparaison</p>
                             <p className="mt-1 text-lg font-extrabold">
-                                {hydrated ? selectedStores.length : 0} / 2 magasin
-                                {(hydrated ? selectedStores.length : 0) > 1 ? "s" : ""}
+                                {!hydrated || selectedStores.length === 0
+                                    ? "Tous les magasins"
+                                    : `${selectedStores.length} magasin${selectedStores.length > 1 ? "s" : ""}`}
                             </p>
                         </div>
                         {hydrated && selectedStores.length > 0 ? (
@@ -134,7 +135,7 @@ export function StoreDirectory({ stores }: { stores: Store[] }) {
                         ) : null}
                     </div>
 
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
                         {hydrated && selectedStores.length > 0 ? (
                             selectedStores.map((store) => (
                                 <div
@@ -156,7 +157,8 @@ export function StoreDirectory({ stores }: { stores: Store[] }) {
                             ))
                         ) : (
                             <p className="rounded-2xl bg-white/60 px-3 py-4 text-sm text-ink/55">
-                                Choisissez un magasin dans la liste, puis un second si vous voulez comparer les deux.
+                                Aucun filtre : tous les magasins de Nouméa sont comparés. Cliquez sur un magasin pour
+                                restreindre la comparaison à votre sélection.
                             </p>
                         )}
                     </div>

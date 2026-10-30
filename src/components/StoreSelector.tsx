@@ -52,7 +52,7 @@ export function StoreSelector({
     compact?: boolean;
     limit?: number;
 }) {
-    const { selectedStores, toggleStore, hydrated } = useStores();
+    const { selectedStores, toggleStore, toggleAll, clearStores, hydrated } = useStores();
     const [query, setQuery] = useState("");
 
     const selectedIds = useMemo(
@@ -75,23 +75,26 @@ export function StoreSelector({
             return a.label.localeCompare(b.label, "fr");
         });
 
-        return sorted.slice(0, limit ?? (compact ? 8 : 30));
-    }, [stores, query, compact, limit, selectedIds]);
+        return limit ? sorted.slice(0, limit) : sorted;
+    }, [stores, query, limit, selectedIds]);
 
     return (
         <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <p className="eyebrow">Vos magasins</p>
+                    <p className="eyebrow">Filtre magasins</p>
                     <p className="mt-1 text-sm text-ink/60">
-                        Sélectionnez un ou deux magasins pour comparer.
+                        Sans sélection, tous les magasins sont comparés. Cochez autant de magasins que vous voulez pour
+                        restreindre la liste.
                     </p>
                 </div>
-                <span className="badge badge-lagoon shrink-0">{selectedStores.length}/2</span>
+                <span className="badge badge-lagoon shrink-0">
+                    {selectedStores.length === 0 ? "Tous" : selectedStores.length}
+                </span>
             </div>
 
             {hydrated && selectedStores.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
                     {selectedStores.map((store) => (
                         <button
                             key={store.id}
@@ -109,6 +112,17 @@ export function StoreSelector({
                     ))}
                 </div>
             ) : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="btn-ghost text-xs" onClick={() => toggleAll(stores)}>
+                    {selectedStores.length > 0 ? "Voir tous les magasins" : `Tout sélectionner (${stores.length})`}
+                </button>
+                {hydrated && selectedStores.length > 0 ? (
+                    <button type="button" className="btn-ghost text-xs" onClick={clearStores}>
+                        Effacer le filtre
+                    </button>
+                ) : null}
+            </div>
 
             <div className="relative">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/40">
@@ -143,8 +157,8 @@ export function StoreSelector({
                             </span>
                             <span
                                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${selected
-                                        ? "border-lagoon bg-lagoon text-white"
-                                        : "border-ink/15 bg-white text-transparent"
+                                    ? "border-lagoon bg-lagoon text-white"
+                                    : "border-ink/15 bg-white text-transparent"
                                     }`}
                             >
                                 <CheckIcon />

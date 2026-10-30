@@ -68,17 +68,20 @@ export function AppHeader() {
                 <Link
                     href="/stores"
                     className="flex shrink-0 items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-3 py-2 text-xs font-bold text-ink/70 transition hover:border-lagoon/30 hover:text-lagoon-dark"
-                    title="Magasins sélectionnés"
+                    title="Filtre magasins"
                 >
                     <span className="relative flex h-2 w-2">
                         <span className="absolute inline-flex h-full w-full rounded-full bg-lagoon/30" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-lagoon" />
                     </span>
                     <span className="hidden sm:inline">
-                        {hydrated ? selectedStores.length : 0}/2 magasin
-                        {(hydrated ? selectedStores.length : 0) > 1 ? "s" : ""}
+                        {!hydrated || selectedStores.length === 0
+                            ? "Tous les magasins"
+                            : `${selectedStores.length} magasin${selectedStores.length > 1 ? "s" : ""}`}
                     </span>
-                    <span className="sm:hidden">{hydrated ? selectedStores.length : 0}/2</span>
+                    <span className="sm:hidden">
+                        {!hydrated || selectedStores.length === 0 ? "Tous" : selectedStores.length}
+                    </span>
                 </Link>
             </div>
         </header>

@@ -20,8 +20,8 @@ export default function RecipesPage() {
                     <p className="eyebrow">À cuisiner</p>
                     <h1 className="section-title mt-2">Vos recettes, au prix de Nouméa.</h1>
                     <p className="mt-3 text-sm leading-relaxed text-ink/60 sm:text-base">
-                        Chaque recette peut être calculée pour un ou deux magasins. Les ingrédients sont associés
-                        aux produits réels de prix.nc, puis comparés avec les promotions et les formats
+                        Chaque recette peut être calculée pour un ou plusieurs magasins. Les ingrédients sont
+                        associés aux produits réels de prix.nc, puis comparés avec les promotions et les formats
                         disponibles.
                     </p>
                 </div>
