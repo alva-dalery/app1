@@ -31,7 +31,6 @@ export function ProductSearch() {
     const [offersLoading, setOffersLoading] = useState(false);
     const [offersError, setOffersError] = useState<string | null>(null);
 
-    const storeKey = selectedStores.map((store) => store.id).join(",");
 
     async function runSearch(value: string) {
         const trimmed = value.trim();
@@ -70,9 +69,11 @@ export function ProductSearch() {
 
         setOffersLoading(true);
         setOffersError(null);
+        setOffers([]);
 
-        const params = storeKey ? `?storeIds=${encodeURIComponent(storeKey)}` : "";
-        fetch(`/api/products/${encodeURIComponent(selectedProduct.id)}/prices${params}`)
+        // On charge tous les relevés de Nouméa : un produit peut être vendu
+        // uniquement dans un magasin qui n'est pas dans la sélection.
+        fetch(`/api/products/${encodeURIComponent(selectedProduct.id)}/prices`)
             .then(async (response) => {
                 const payload = (await response.json()) as PricesPayload;
                 if (!response.ok) throw new Error(payload.error ?? "Impossible de charger les prix.");
@@ -90,34 +91,49 @@ export function ProductSearch() {
         return () => {
             cancelled = true;
         };
-    }, [selectedProduct, storeKey]);
+    }, [selectedProduct]);
+
+    const sortedOffers = useMemo(
+        () =>
+            [...offers].sort((a, b) => {
+                const unitA = a.unitPrice ?? a.price;
+                const unitB = b.unitPrice ?? b.price;
+                if (unitA !== unitB) return unitA - unitB;
+                return a.price - b.price;
+            }),
+        [offers],
+    );
+
+    const bestOffer = sortedOffers[0] ?? null;
+    const bestOfferId = bestOffer?.storeId ?? null;
 
     const rows = useMemo(() => {
-        if (selectedStores.length > 0) {
-            return selectedStores.map((store) => ({
-                storeId: store.id,
-                label: store.label,
-                offer: offers.find((offer) => offer.storeId === store.id) ?? null,
-            }));
-        }
+        const selectedIds = new Set(selectedStores.map((store) => store.id));
 
-        return offers.slice(0, 15).map((offer) => ({
-            storeId: offer.storeId,
-            label: offer.storeLabel,
-            offer,
+        // Les magasins sélectionnés restent affichés en tête, même sans relevé,
+        // puis on ajoute les autres magasins de Nouméa qui vendent le produit :
+        // sans cela un produit vendu ailleurs apparaissait sans aucun prix.
+        const selectedRows = selectedStores.map((store) => ({
+            storeId: store.id,
+            label: store.label,
+            offer: offers.find((offer) => offer.storeId === store.id) ?? null,
+            isSelectedStore: true,
         }));
-    }, [selectedStores, offers]);
 
-    const bestOfferId = useMemo(() => {
-        if (offers.length === 0) return null;
-        const sorted = [...offers].sort((a, b) => {
-            const unitA = a.unitPrice ?? a.price;
-            const unitB = b.unitPrice ?? b.price;
-            if (unitA !== unitB) return unitA - unitB;
-            return a.price - b.price;
-        });
-        return sorted[0]?.storeId ?? null;
-    }, [offers]);
+        const otherRows = sortedOffers
+            .filter((offer) => !selectedIds.has(offer.storeId))
+            .slice(0, 10)
+            .map((offer) => ({
+                storeId: offer.storeId,
+                label: offer.storeLabel,
+                offer,
+                isSelectedStore: false,
+            }));
+
+        return [...selectedRows, ...otherRows];
+    }, [selectedStores, offers, sortedOffers]);
+
+    const hasOtherStoreRows = rows.some((row) => !row.isSelectedStore);
 
     return (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
@@ -190,8 +206,8 @@ export function ProductSearch() {
                                 type="button"
                                 onClick={() => setSelectedProduct(product)}
                                 className={`w-full rounded-2xl border p-4 text-left transition ${selected
-                                        ? "border-lagoon/40 bg-lagoon/8"
-                                        : "border-ink/8 bg-white/70 hover:border-lagoon/25 hover:bg-white"
+                                    ? "border-lagoon/40 bg-lagoon/8"
+                                    : "border-ink/8 bg-white/70 hover:border-lagoon/25 hover:bg-white"
                                     }`}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -261,6 +277,23 @@ export function ProductSearch() {
                                 </p>
                             )}
 
+                            {!offersLoading && !offersError && bestOffer ? (
+                                <div className="mb-4 rounded-2xl border border-lagoon/20 bg-lagoon/8 px-4 py-3">
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-lagoon-dark">
+                                        Meilleur prix à Nouméa
+                                    </p>
+                                    <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                                        <span className="price-value text-lg text-lagoon-dark">
+                                            {formatXpf(bestOffer.price)}
+                                        </span>
+                                        <span className="text-xs text-ink/60">{bestOffer.storeLabel}</span>
+                                    </p>
+                                    <p className="mt-0.5 text-[0.7rem] text-ink/50">
+                                        {formatXpfPerUnit(bestOffer.unitPrice ?? bestOffer.price, bestOffer.unitShort)}
+                                    </p>
+                                </div>
+                            ) : null}
+
                             {offersLoading ? (
                                 <div className="space-y-2">
                                     {Array.from({ length: 3 }).map((_, index) => (
@@ -275,13 +308,13 @@ export function ProductSearch() {
                                 </p>
                             ) : null}
 
-                            {!offersLoading && !offersError && rows.length === 0 ? (
+                            {!offersLoading && !offersError && offers.length === 0 ? (
                                 <p className="rounded-2xl bg-ink/5 px-4 py-3 text-sm text-ink/60">
-                                    Aucun relevé de prix n'est disponible pour ce produit.
+                                    Aucun relevé de prix n'est disponible pour ce produit à Nouméa.
                                 </p>
                             ) : null}
 
-                            {!offersLoading && !offersError && rows.length > 0 ? (
+                            {!offersLoading && !offersError && offers.length > 0 ? (
                                 <div className="scroll-x -mx-2">
                                     <table className="data-table">
                                         <thead>
@@ -296,10 +329,15 @@ export function ProductSearch() {
                                             {rows.map((row) => (
                                                 <tr key={row.storeId}>
                                                     <td>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex flex-wrap items-center gap-2">
                                                             <span className="font-semibold">{row.label}</span>
                                                             {row.offer && row.storeId === bestOfferId ? (
                                                                 <span className="badge badge-lagoon">Le moins cher</span>
+                                                            ) : null}
+                                                            {row.isSelectedStore ? (
+                                                                <span className="rounded-full border border-ink/10 bg-white/70 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-ink/45">
+                                                                    Votre magasin
+                                                                </span>
                                                             ) : null}
                                                         </div>
                                                         {row.offer?.promotion ? (
@@ -335,6 +373,13 @@ export function ProductSearch() {
                                         </tbody>
                                     </table>
                                 </div>
+                            ) : null}
+
+                            {!offersLoading && !offersError && hasOtherStoreRows ? (
+                                <p className="mt-3 rounded-2xl bg-sand px-3 py-2 text-xs leading-relaxed text-ink/60">
+                                    D'autres magasins de Nouméa vendent ce produit : ils sont affichés à titre de
+                                    comparaison, car il n'est pas référencé dans tous les magasins sélectionnés.
+                                </p>
                             ) : null}
 
                             <p className="mt-4 text-[0.7rem] leading-relaxed text-ink/45">
