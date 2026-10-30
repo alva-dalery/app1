@@ -401,3 +401,68 @@ export function saveIngredientMapping(
        updated_at = excluded.updated_at`,
     ).run(key, productId, productName, productUnit ?? null, source, new Date().toISOString());
 }
+
+export interface CachedProductImage {
+    gencode: string;
+    imageUrl: string | null;
+    thumbUrl: string | null;
+    updatedAt: string;
+}
+
+interface ProductImageRow {
+    gencode: string;
+    image_url: string | null;
+    thumb_url: string | null;
+    updated_at: string;
+}
+
+/**
+ * Visuels déjà résolus pour ces codes-barres. Une ligne sans URL est un
+ * « cache négatif » : le produit a déjà été cherché sans résultat.
+ */
+export function getCachedProductImages(gencodes: string[]): Map<string, CachedProductImage> {
+    const unique = Array.from(new Set(gencodes.filter(Boolean)));
+    const cached = new Map<string, CachedProductImage>();
+    if (unique.length === 0) return cached;
+
+    const db = getDb();
+    const placeholders = unique.map(() => "?").join(", ");
+    const rows = db
+        .prepare(
+            `SELECT gencode, image_url, thumb_url, updated_at
+       FROM product_images WHERE gencode IN (${placeholders})`,
+        )
+        .all(...unique) as unknown as ProductImageRow[];
+
+    for (const row of rows) {
+        cached.set(row.gencode, {
+            gencode: row.gencode,
+            imageUrl: row.image_url,
+            thumbUrl: row.thumb_url,
+            updatedAt: row.updated_at,
+        });
+    }
+
+    return cached;
+}
+
+export function saveProductImages(
+    entries: Array<{ gencode: string; imageUrl: string | null; thumbUrl: string | null }>,
+): void {
+    if (entries.length === 0) return;
+
+    const db = getDb();
+    const statement = db.prepare(
+        `INSERT INTO product_images (gencode, image_url, thumb_url, source, updated_at)
+     VALUES (?, ?, ?, 'openfoodfacts', ?)
+     ON CONFLICT(gencode) DO UPDATE SET
+       image_url = excluded.image_url,
+       thumb_url = excluded.thumb_url,
+       updated_at = excluded.updated_at`,
+    );
+
+    const now = new Date().toISOString();
+    for (const entry of entries) {
+        statement.run(entry.gencode, entry.imageUrl, entry.thumbUrl, now);
+    }
+}

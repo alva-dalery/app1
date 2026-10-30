@@ -18,11 +18,58 @@ interface PricesPayload {
     error?: string;
 }
 
+interface ProductImageEntry {
+    url: string;
+    thumbUrl: string;
+}
+
+interface ImagesPayload {
+    images?: Record<string, ProductImageEntry>;
+}
+
+/** Vignette produit, ou initiales lorsque la source ne fournit pas de visuel. */
+function ProductThumb({
+    src,
+    name,
+    size,
+}: {
+    src?: string;
+    name: string;
+    size: number;
+}) {
+    if (src) {
+        return (
+            <img
+                src={src}
+                alt={`Visuel de ${name}`}
+                width={size}
+                height={size}
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="shrink-0 rounded-xl border border-ink/8 bg-white object-contain p-1"
+                style={{ width: size, height: size }}
+            />
+        );
+    }
+
+    return (
+        <span
+            aria-hidden="true"
+            className="flex shrink-0 items-center justify-center rounded-xl border border-ink/8 bg-sand text-[0.7rem] font-extrabold uppercase tracking-wide text-ink/35"
+            style={{ width: size, height: size }}
+        >
+            {name.slice(0, 2)}
+        </span>
+    );
+}
+
 export function ProductSearch() {
     const { selectedStores, hydrated } = useStores();
     const [query, setQuery] = useState("");
     const [submittedQuery, setSubmittedQuery] = useState("");
     const [products, setProducts] = useState<Product[]>([]);
+    const [productImages, setProductImages] = useState<Record<string, ProductImageEntry>>({});
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -62,6 +109,35 @@ export function ProductSearch() {
         event.preventDefault();
         void runSearch(query);
     }
+
+    // prix.nc ne fournit aucun visuel : les photos sont résolues à part, après
+    // la recherche, pour ne pas allonger le temps de réponse.
+    useEffect(() => {
+        const codes = Array.from(
+            new Set(products.map((product) => product.gencode).filter((code): code is string => Boolean(code))),
+        ).slice(0, 40);
+
+        if (codes.length === 0) return;
+
+        let cancelled = false;
+
+        fetch(`/api/product-images?codes=${encodeURIComponent(codes.join(","))}`)
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload: ImagesPayload | null) => {
+                if (cancelled || !payload?.images) return;
+                setProductImages((current) => ({ ...current, ...payload.images }));
+            })
+            .catch(() => {
+                // Visuels décoratifs : à défaut, les initiales du produit restent affichées.
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [products]);
+
+    const imageFor = (product: Product): ProductImageEntry | undefined =>
+        product.gencode ? productImages[product.gencode] : undefined;
 
     useEffect(() => {
         if (!selectedProduct) return;
@@ -226,7 +302,8 @@ export function ProductSearch() {
                                     }`}
                             >
                                 <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
+                                    <ProductThumb src={imageFor(product)?.thumbUrl} name={product.name} size={52} />
+                                    <div className="min-w-0 flex-1">
                                         <p className="text-sm font-bold leading-snug">{product.name}</p>
                                         <p className="mt-1 text-xs text-ink/50">
                                             {[product.brand, product.category, product.subCategory]
@@ -258,13 +335,25 @@ export function ProductSearch() {
                     <div className="shrink-0 border-b border-ink/8 p-5">
                         <p className="eyebrow">Comparaison de prix</p>
                         {selectedProduct ? (
-                            <>
-                                <h2 className="mt-2 text-xl font-extrabold leading-tight">{selectedProduct.name}</h2>
-                                <p className="mt-1 text-xs text-ink/50">
-                                    {selectedProduct.brand ? `${selectedProduct.brand} · ` : ""}
-                                    {selectedProduct.category ?? "Produit"}
-                                </p>
-                            </>
+                            <div className="mt-2 flex items-start gap-3">
+                                <ProductThumb
+                                    src={imageFor(selectedProduct)?.url}
+                                    name={selectedProduct.name}
+                                    size={72}
+                                />
+                                <div className="min-w-0">
+                                    <h2 className="text-xl font-extrabold leading-tight">{selectedProduct.name}</h2>
+                                    <p className="mt-1 text-xs text-ink/50">
+                                        {selectedProduct.brand ? `${selectedProduct.brand} · ` : ""}
+                                        {selectedProduct.category ?? "Produit"}
+                                    </p>
+                                    {selectedProduct.gencode ? (
+                                        <p className="mt-1 text-[0.65rem] text-ink/35">
+                                            EAN {selectedProduct.gencode}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            </div>
                         ) : (
                             <>
                                 <h2 className="mt-2 text-xl font-extrabold">Sélectionnez un produit.</h2>
@@ -400,7 +489,8 @@ export function ProductSearch() {
 
                             <p className="mt-4 text-[0.7rem] leading-relaxed text-ink/45">
                                 Le prix unitaire permet de comparer des formats différents. Le prix affiché est celui
-                                du conditionnement tel que relevé par prix.nc.
+                                du conditionnement tel que relevé par prix.nc. Visuels : Open Food Facts (CC BY-SA),
+                                retrouvés via le code-barres — certains produits importés n'y sont pas référencés.
                             </p>
                         </div>
                     ) : null}

@@ -105,6 +105,14 @@ function initializeSchema(db: DatabaseSync): void {
       source TEXT,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS product_images (
+      gencode TEXT PRIMARY KEY,
+      image_url TEXT,
+      thumb_url TEXT,
+      source TEXT NOT NULL DEFAULT 'openfoodfacts',
+      updated_at TEXT NOT NULL
+    );
   `);
 
   ensureColumn(db, "recipe_ingredients", "mapping_source", "TEXT");
