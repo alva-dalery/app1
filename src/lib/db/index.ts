@@ -25,7 +25,11 @@ function isServerlessRuntime(): boolean {
 }
 
 function toAbsolute(target: string): string {
-  return path.isAbsolute(target) ? target : path.join(process.cwd(), target);
+  // Le commentaire turbopackIgnore empêche le traceur de considérer tout le
+  // projet comme une dépendance du serveur (sinon le bundle inclut la racine).
+  return path.isAbsolute(target)
+    ? target
+    : path.join(/*turbopackIgnore: true*/ process.cwd(), target);
 }
 
 /**
@@ -43,11 +47,11 @@ function candidateDbPaths(): string[] {
   }
 
   if (isServerlessRuntime()) {
-    ordered.push(path.join(os.tmpdir(), DB_FILENAME));
+    ordered.push(path.join(/*turbopackIgnore: true*/ os.tmpdir(), DB_FILENAME));
   }
 
   ordered.push(path.join(process.cwd(), "data", DB_FILENAME));
-  ordered.push(path.join(os.tmpdir(), "prix-noumea", DB_FILENAME));
+  ordered.push(path.join(/*turbopackIgnore: true*/ os.tmpdir(), "prix-noumea", DB_FILENAME));
 
   return Array.from(new Set(ordered));
 }

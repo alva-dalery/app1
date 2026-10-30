@@ -4,7 +4,7 @@
     "private": true,
     "description": "Comparateur de prix entre supermarchés à Nouméa, basé sur l'API prix.nc",
     "engines": {
-        "node": "24.x"
+        "node": ">=24"
     },
     "scripts": {
         "dev": "next dev",
