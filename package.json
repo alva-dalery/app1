@@ -1,0 +1,32 @@
+{
+    "name": "prix-noumea",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Comparateur de prix entre supermarchés à Nouméa, basé sur l'API prix.nc",
+    "engines": {
+        "node": ">=24"
+    },
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "typecheck": "tsc --noEmit",
+        "test": "node --import tsx --test tests/*.test.ts",
+        "db:seed": "tsx scripts/seed.ts",
+        "db:reset": "rm -f data/app.db && tsx scripts/seed.ts"
+    },
+    "dependencies": {
+        "next": "16.4.3",
+        "react": "19.3.1",
+        "react-dom": "19.3.1"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4.3.3",
+        "@types/node": "^26.6.6",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "tailwindcss": "^4.3.3",
+        "tsx": "^4.20.0",
+        "typescript": "^5.9.3"
+    }
+}
